@@ -1,0 +1,134 @@
+# --- ZOOKEEPER DEPLOYMENT ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: plataforma-urbana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: confluentinc/cp-zookeeper:7.5.0
+        ports:
+        - containerPort: 2181
+        env:
+        - name: ZOOKEEPER_CLIENT_PORT
+          value: "2181"
+        - name: ZOOKEEPER_TICK_TIME
+          value: "2000"
+---
+# --- ZOOKEEPER SERVICE ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper-service
+  namespace: plataforma-urbana
+spec:
+  selector:
+    app: zookeeper
+  ports:
+  - port: 2181
+    targetPort: 2181
+---
+# --- KAFKA DEPLOYMENT ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: plataforma-urbana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.5.0
+        ports:
+        - containerPort: 9092
+        - containerPort: 29092
+        env:
+        - name: KAFKA_BROKER_ID
+          value: "1"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper-service:2181"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka-service:29092,PLAINTEXT_HOST://localhost:9092"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+---
+# --- KAFKA SERVICE ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-service
+  namespace: plataforma-urbana
+spec:
+  selector:
+    app: kafka
+  ports:
+  - name: internal
+    port: 29092
+    targetPort: 29092
+  - name: external
+    port: 9092
+    targetPort: 9092
+---
+# --- SPARK MASTER DEPLOYMENT ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-master
+  namespace: plataforma-urbana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-master
+  template:
+    metadata:
+      labels:
+        app: spark-master
+    spec:
+      containers:
+      - name: spark-master
+        image: bitnami/spark:latest
+        command: ["bin/spark-class", "org.apache.spark.deploy.master.Master"]
+        ports:
+        - containerPort: 7077
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: plataforma-config
+---
+# --- SPARK MASTER SERVICE ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-master-service
+  namespace: plataforma-urbana
+spec:
+  selector:
+    app: spark-master
+  ports:
+  - name: cluster
+    port: 7077
+    targetPort: 7077
+  - name: webui
+    port: 8080
+    targetPort: 8080
