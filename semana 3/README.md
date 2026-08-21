@@ -12,7 +12,7 @@ graph LR
     B -->|Structured Ingestion| C[Spark Streaming: spark_sensor_processor.py]
     C -->|Windowing 1 Min + Aggregations| D[Consola / Panel Control AKHQ]
     
-    subgraph Orquestación de Infraestructura [/k8s/]
+    subgraph "Orquestación de Infraestructura [/k8s/]"
         B
         E[ConfigMap: plataforma-config]
         F[Namespace: plataforma-urbana]
